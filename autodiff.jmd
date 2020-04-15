@@ -1,0 +1,178 @@
+---
+title: AutoDiff
+author: Chad Scherrer
+date: April 2020
+---
+
+class: center, middle
+
+# AutoDiff in Julia
+
+## Chad Scherrer
+
+RelationalAI <br />
+April 15, 2020
+
+
+```julia; echo=false
+using Plots
+```
+
+---
+
+## Running Example: The Rosenbrock Function
+
+```julia; results="hidden"
+f(x, y; a=1, b=100) = (a - x)^2 + b * (y - x^2)^2
+
+f_vec(x_y) = f(x_y[1], x_y[2])
+```
+
+
+```math
+\begin{aligned}
+f(x,y) &= (1 - x)^2 + 100 (y - x^2)^2 \\\\
+f_x (0,1) &= -2 \\\\
+f_y (0,1) &= 200 
+\end{aligned}
+```
+
+--- 
+
+class: center, middle
+
+# Forward Mode
+
+```math
+(x +  Δ x, y + Δ y) → z + Δz
+```
+
+---
+
+## [Measurements.jl](https://github.com/JuliaPhysics/Measurements.jl)
+
+```julia
+using Measurements: ±
+
+x = 0 ± 1; y = 1 ± 1;
+z = f(x, y)
+```
+
+--
+
+```julia
+@show x.tag, y.tag;
+```
+
+--
+
+```julia
+z.der
+```
+
+--
+
+```julia
+y - y # Without tags, this would give 0 ± √2
+```
+
+
+---
+
+## [TaylorSeries.jl](https://github.com/JuliaDiff/TaylorSeries.jl)
+
+```julia; echo=false
+import TaylorSeries
+```
+
+```julia
+dx, dy = TaylorSeries.set_variables("dx dy", order=3)
+x = dx; y = 1 + dy
+@show x; @show y;
+```
+
+--
+
+```julia
+z = f(x, y)
+```
+
+--
+
+```julia
+TaylorSeries.∇(z)
+```
+
+---
+
+class: center, middle
+
+# Reverse Mode
+
+
+```math
+(x , y) → (z, Δz → (Δx, Δy))
+```
+
+---
+
+## [Zygote.jl](https://fluxml.ai/Zygote.jl/latest/)
+
+```julia; echo=false
+import Zygote
+```
+
+```julia
+Zygote.gradient(f, 0.0, 1.0)
+```
+
+--
+
+```julia
+Zygote.gradient(f_vec, [0.0, 1.0])
+```
+--
+
+```julia
+z, back = Zygote.pullback(f, 0.0, 1.0)
+```
+
+--
+
+```julia
+back(1)
+```
+
+---
+
+class: center, middle
+
+# Ongoing Work
+
+---
+
+## [ChainRules.jl](https://github.com/JuliaDiff/ChainRules.jl)
+
+- Extensible collection of rules for any source-to-source autodiff
+
+- PR for Zygote: https://github.com/FluxML/Zygote.jl/pull/366
+
+- Very well documented: https://github.com/JuliaDiff/ChainRules.jl
+
+---
+
+## [ForwardDiff2.jl](https://github.com/YingboMa/ForwardDiff2.jl)
+
+ForwardDiff2 = ForwardDiff.jl + ChainRules.jl + Struct of arrays
+
+User API: `D(f)(x)` returns a lazy representation of the derivative.
+
+`D(f)(x) * v` computes `df(x)/dx ⋅ v`, taking advantage of the laziness in `D(f)(x)`.
+
+`DI(f)(x)` is a convenience function to materialize the derivative, gradient or Jacobian of `f` at `x`.
+
+---
+
+class: center, middle
+
+# Fin
